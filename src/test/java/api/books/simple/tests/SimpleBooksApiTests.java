@@ -321,7 +321,7 @@ public class SimpleBooksApiTests {
 
 
     private static String generateToken(){
-        ClientRequestBody requestBody = new ClientRequestBody("Kevin Lee", "kevin.lee17@gmail.com");
+        ClientRequest requestBody = new ClientRequest("Kevin Lee", "kevin.lee17@gmail.com");
         Response response = given()
                 .contentType(ContentType.JSON)
                 .body(requestBody)

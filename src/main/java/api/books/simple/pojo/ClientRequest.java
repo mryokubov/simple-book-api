@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-public class ClientRequestBody {
+public class ClientRequest {
     private String clientName;
     private String clientEmail;
 }
