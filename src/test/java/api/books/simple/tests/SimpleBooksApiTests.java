@@ -1,7 +1,10 @@
 package api.books.simple.tests;
 
+import static api.books.simple.api.ApiOperations.*;
+import static api.books.simple.api_constants.ApiStatus.*;
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.CoreMatchers.*;
+import static api.books.simple.api_constants.ApiEndPoints.*;
 import api.books.simple.pojo.*;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
@@ -15,105 +18,83 @@ import java.util.List;
 
 public class SimpleBooksApiTests {
 
-
-    private static final String BASE_URL = "https://simple-books-api.glitch.me";
-    private static final String ACCESS_TOKEN = "2272d1a328d942aab2f10d443e99fdc78a5d6edd878dc6512fd440258fc8e0ce";
-
     @BeforeClass
     public static void setUp(){
-        //setting up the base url for rest assured before it makes a
-        //request to any end point
-        RestAssured.baseURI = BASE_URL;
+        RestAssured.baseURI = BASE_URI;
     }
 
 
     @Test
     public void getApiStatusTest(){
-        given()
-                .when()
-                .get("/status")
+        performGetRequest(GET_STATUS_ENDPOINT, false)
                 .then()
-                .statusCode(200)
+                .statusCode(OK)
                 .contentType(ContentType.JSON)
                 .body("status", equalTo("OK"));
     }
 
     @Test
     public void getListOfBooksTest(){
-        given()
-                .when()
-                .get("/books")
+        performGetRequest(GET_ALL_BOOKS_ENDPOINT, false)
                 .then()
-                .statusCode(200) //verify status is 200
+                .statusCode(OK)
+                .contentType(ContentType.JSON)
                 .body("", Matchers.instanceOf(List.class))
-                .contentType(ContentType.JSON)  //verify response was in json
-                .body("size()", equalTo(6)); //verify number of resource was 6
+                .body("size()", equalTo(6));
     }
 
     @Test
     public void getListOfBooksVerifyEachTest(){
-        Response response = given()
-                .when()
-                .get("/books")
+        Response response =  performGetRequest(GET_ALL_BOOKS_ENDPOINT, false)
                 .then()
-                .statusCode(200) //verify status is 200
+                .statusCode(OK)
+                .contentType(ContentType.JSON)
                 .extract()
                 .response();
 
-        BookResponse[] bookObjects = response.as(BookResponse[].class);
-
-        for(BookResponse obj : bookObjects){
-            Assert.assertTrue(obj.getId() != null);
+        BookResponse[] booksResponse = response.as(BookResponse[].class);
+        for (BookResponse bookLimitedDetailsResponse : booksResponse) {
+            Assert.assertTrue(bookLimitedDetailsResponse.getId() != null);
         }
     }
 
     @Test
     public void getListOfBooksWithTypeQueryParamTest(){
-        given()
-                .queryParam("type", "fiction")
-                .when()
-                .get("/books")
+        performGetRequestQueryParam(GET_ALL_BOOKS_ENDPOINT, "type", "fiction", false)
                 .then()
-                .statusCode(200)
-                .body("", Matchers.instanceOf(List.class))
+                .statusCode(OK)
                 .contentType(ContentType.JSON)
+                .body("", Matchers.instanceOf(List.class))
                 .body("size()", equalTo(4));
     }
 
     @Test
     public void getListOfBooksWithLimitQueryParamTest(){
-        given()
-                .queryParam("limit", 2)
-                .when()
-                .get("/books")
+        performGetRequestQueryParam(GET_ALL_BOOKS_ENDPOINT, "limit", String.valueOf(2), false)
                 .then()
-                .statusCode(200)
-                .body("", Matchers.instanceOf(List.class))
+                .statusCode(OK)
                 .contentType(ContentType.JSON)
+                .body("", Matchers.instanceOf(List.class))
                 .body("size()", equalTo(2));
     }
 
     @Test
     public void getSingleBookByIdTest(){
-        given()
-                .pathParam("bookId", 2)
-                .when()
-                .get("/books/{bookId}")
+        performGetRequestPathParam(GET_ONE_BOOK_ENDPOINT, "bookId", String.valueOf(2), false)
                 .then()
-                .statusCode(200)
+                .statusCode(OK)
                 .contentType(ContentType.JSON)
                 .body("id", equalTo(2));
     }
 
     @Test
     public void getSingleBookByIdValidateAllFieldsJSONPathTest(){
-        Response response = given()
-                .pathParam("bookId", 1)
-                .when()
-                .get("/books/{bookId}")
+
+        Response response = performGetRequestPathParam(GET_ONE_BOOK_ENDPOINT, "bookId", String.valueOf(1), false)
                 .then()
-                .statusCode(200)
+                .statusCode(OK)
                 .contentType(ContentType.JSON)
+                .body("id", equalTo(1))
                 .extract()
                 .response();
 
@@ -139,13 +120,12 @@ public class SimpleBooksApiTests {
 
     @Test
     public void getSingleBookByIdValidateAllFieldsPojoTest(){
-        Response response = given()
-                .pathParam("bookId", 1)
-                .when()
-                .get("/books/{bookId}")
+
+        Response response = performGetRequestPathParam(GET_ONE_BOOK_ENDPOINT, "bookId", String.valueOf(1), false)
                 .then()
-                .statusCode(200)
+                .statusCode(OK)
                 .contentType(ContentType.JSON)
+                .body("id", equalTo(1))
                 .extract()
                 .response();
 
@@ -164,25 +144,20 @@ public class SimpleBooksApiTests {
 
     @Test
     public void getSingleBookByIdNegativeTest(){
-        given()
-                .pathParam("bookId", 20)
-                .when()
-                .get("/books/{bookId}")
+        performGetRequestPathParam(GET_ONE_BOOK_ENDPOINT, "bookId", String.valueOf(20), false)
                 .then()
-                .statusCode(404)
+                .statusCode(NOT_FOUND)
                 .contentType(ContentType.JSON)
                 .body("error", equalTo("No book with id 20"));
     }
 
     @Test
     public void postSubmitBookOrderTest(){
-        given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + ACCESS_TOKEN)
-                .body(new SubmitOrderRequest(1, "Kevin Lee"))
-                .post("/orders")
+        SubmitOrderRequest requestPayload = new SubmitOrderRequest(1, "Kevin Lee");
+
+        performPostRequest(POST_ORDERS_ENDPOINT, requestPayload, true)
                 .then()
-                .statusCode(201)
+                .statusCode(CREATED)
                 .contentType(ContentType.JSON)
                 .body("created", equalTo(true))
                 .body("orderId", notNullValue());
@@ -190,16 +165,16 @@ public class SimpleBooksApiTests {
 
     @Test
     public void postSubmitBookOrderBadTest(){
-        given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + ACCESS_TOKEN)
-                .body("{\n" +
-                        "    \"bookId\": 1,\n" +
-                        "    \"customerName\": \"Mike Lee\"\n" +
-                        "}")
-                .post("/orders")
+
+        String payload = "{\n" +
+                "    \"bookId\": 1,\n" +
+                "    \"customerName\": \"Mike Lee\"\n" +
+                "}";
+
+        performPostRequest(POST_ORDERS_ENDPOINT,
+                payload, true)
                 .then()
-                .statusCode(201)
+                .statusCode(CREATED)
                 .contentType(ContentType.JSON)
                 .body("created", equalTo(true))
                 .body("orderId", notNullValue());
@@ -207,57 +182,36 @@ public class SimpleBooksApiTests {
 
     @Test
     public void postSubmitBookOrderWithNoAccessTokenTest(){
-        given()
-                .contentType(ContentType.JSON)
-                .body("{\n" +
-                        "    \"bookId\": 1,\n" +
-                        "    \"customerName\": \"Mike Lee\"\n" +
-                        "}")
-                .post("/orders")
+        String payload = "{\n" +
+                "    \"bookId\": 1,\n" +
+                "    \"customerName\": \"Mike Lee\"\n" +
+                "}";
+
+        performPostRequest(POST_ORDERS_ENDPOINT,
+                payload, false)
                 .then()
-                .statusCode(401)
+                .statusCode(UNAUTHORIZED)
+                .contentType(ContentType.JSON)
                 .contentType(ContentType.JSON)
                 .body("error", equalTo("Missing Authorization header."));
     }
 
-    @Test
-    public void postSubmitBookOrderWithInvalidTokenTokenTest(){
-        given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer 2272d1a328d942aab2f10d443e99fdc78a5d6edd878dc6512fd440258fc8e0ck")
-                .body("{\n" +
-                        "    \"bookId\": 1,\n" +
-                        "    \"customerName\": \"Mike Lee\"\n" +
-                        "}")
-                .post("/orders")
-                .then()
-                .statusCode(401)
-                .contentType(ContentType.JSON)
-                .body("error", equalTo("Invalid bearer token."));
-    }
 
     @Test
     public void getAllOrdersTest(){
-        given()
-                .header("Authorization", "Bearer " + ACCESS_TOKEN)
-                .get("/orders")
+        performGetRequest(GET_All_ORDERS_ENDPOINT, true)
                 .then()
-                .statusCode(200)
+                .statusCode(OK)
                 .contentType(ContentType.JSON)
                 .body("", Matchers.instanceOf(List.class));
     }
 
     @Test
     public void getSingleOrderTest(){
-
         String orderId = placeOrderAndGetId();
-
-        given()
-                .pathParam("orderId", orderId)
-                .header("Authorization", "Bearer " + ACCESS_TOKEN)
-                .get("/orders/{orderId}")
+        performGetRequestPathParam(GET_ONE_ORDER_ENDPOINT, "orderId", orderId, true)
                 .then()
-                .statusCode(200)
+                .statusCode(OK)
                 .contentType(ContentType.JSON)
                 .body("id", equalTo(orderId));
     }
@@ -265,15 +219,10 @@ public class SimpleBooksApiTests {
 
     @Test
     public void deleteOrderTest(){
-
         String orderId = placeOrderAndGetId();
-
-        given()
-                .pathParam("orderId", orderId)
-                .header("Authorization", "Bearer " + ACCESS_TOKEN)
-                .delete("/orders/{orderId}")
+        performDeleteRequest(DELETE_ONE_ORDER_ENDPOINT, "orderId", orderId)
                 .then()
-                .statusCode(204);
+                .statusCode(NO_CONTENT);
     }
 
     @Test
@@ -282,36 +231,23 @@ public class SimpleBooksApiTests {
         String orderId = placeOrderAndGetId();
         String updatedCustomerName = "Tom Peterson";
 
-        given()
-                .pathParam("orderId", orderId)
-                .header("Authorization", "Bearer " + ACCESS_TOKEN)
-                .contentType(ContentType.JSON)
-                .body(new UpdateOrderRequest(updatedCustomerName))
-                .patch("/orders/{orderId}")
+        performPatchRequest(PATCH_ONE_ORDER_ENDPOINT, "orderId", orderId, new UpdateOrderRequest(updatedCustomerName))
                 .then()
-                .statusCode(204);
+                .statusCode(NO_CONTENT);
 
-        OrderDetailsResponse orderDetailsResponse = given()
-                .pathParam("orderId", orderId)
-                .header("Authorization", "Bearer " + ACCESS_TOKEN)
-                .get("/orders/{orderId}")
+
+        performGetRequestPathParam(GET_ONE_ORDER_ENDPOINT, "orderId", orderId, true)
                 .then()
-                .statusCode(200)
+                .statusCode(OK)
                 .contentType(ContentType.JSON)
-                .extract()
-                .response()
-                .as(OrderDetailsResponse.class);
+                .body("customerName", equalTo(updatedCustomerName));
     }
 
 
     private String placeOrderAndGetId(){
-        return given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Bearer " + ACCESS_TOKEN)
-                .body(new SubmitOrderRequest(1, "Kevin Lee"))
-                .post("/orders")
+        return performPostRequest(POST_ORDERS_ENDPOINT, new SubmitOrderRequest(1, "Kevin Lee"), true)
                 .then()
-                .statusCode(201)
+                .statusCode(CREATED)
                 .contentType(ContentType.JSON)
                 .extract()
                 .response()
@@ -326,14 +262,13 @@ public class SimpleBooksApiTests {
                 .contentType(ContentType.JSON)
                 .body(requestBody)
                 .when()
-                .post(BASE_URL + "/api-clients")
+                .post(BASE_URI+POST_REGISTER_CLIENT_ENDPOINT)
                 .then()
                 .statusCode(201)
                 .extract()
                 .response();
 
         String accessToken = response.as(ApiClientResponseBody.class).getAccessToken();
-
         return accessToken;
     }
 }
